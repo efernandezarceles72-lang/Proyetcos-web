@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financiero</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; display: flex; overflow-x: hidden; }
+
+        .sidebar { width: 250px; height: 100vh; background: #020617; padding: 25px; position: fixed; left: 0; top: 0; }
+        .logo { font-size: 34px; font-weight: 800; color: #38bdf8; margin-bottom: 40px; line-height: 1.1; }
+        .menu button { width: 100%; padding: 15px; margin-bottom: 12px; border: none; border-radius: 14px; background: transparent; color: #cbd5e1; font-size: 16px; cursor: pointer; text-align: left; transition: 0.3s; }
+        .menu button:hover { background: #1e293b; }
+        .active { background: linear-gradient(90deg, #2563eb, #38bdf8) !important; color: white !important; }
+
+        .main { margin-left: 250px; width: 100%; padding: 30px; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; gap: 20px; }
+        .topbar h1 { font-size: 42px; font-weight: 800; }
+        .topbar p { color: #94a3b8; margin-top: 8px; }
+        .btn { border: none; padding: 14px 22px; border-radius: 14px; background: linear-gradient(135deg, #2563eb, #38bdf8); color: white; font-weight: 700; cursor: pointer; transition: 0.3s; margin-right: 10px; }
+        .btn:hover { transform: translateY(-2px); }
+        .month-selector { background: #1e293b; border: 2px solid #38bdf8; color: white; padding: 8px 16px; border-radius: 12px; font-weight: 600; }
+        .month-selector option { background: #020617; color: white; }
+
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 25px; margin-bottom: 30px; }
+        .card { padding: 28px; border-radius: 24px; position: relative; overflow: hidden; }
+        .card p { font-size: 15px; opacity: 0.9; }
+        .card h2 { font-size: 38px; margin-top: 12px; font-weight: 800; }
+        .card small { font-size: 12px; opacity: 0.8; display: block; margin-top: 4px; }
+        .card i { position: absolute; right: 20px; top: 20px; font-size: 70px; opacity: 0.15; }
+
+        .positivo { background: linear-gradient(135deg, #16a34a, #22c55e); }
+        .negativo { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        .saldo-positivo { background: linear-gradient(135deg, #059669, #10b981); }
+        .saldo-negativo { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        .ahorros { background: linear-gradient(135deg, #7c3aed, #9333ea); }
+        .seguro { background: linear-gradient(135deg, #ea580c, #f97316); }
+
+        .credit-box { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; }
+        .credit { background: #111827; padding: 25px; border-radius: 25px; }
+        .credit h2 { margin-bottom: 20px; }
+        .credit-line { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .disponible-0 { color: #ef4444 !important; font-weight: 900 !important; }
+        .disponible-ok { color: #10b981 !important; font-weight: 700 !important; }
+
+        .detalle-box { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 25px; margin-bottom: 30px; }
+        .detalle-card { background: #111827; padding: 25px; border-radius: 25px; text-align: center; }
+        .detalle-card h3 { color: #38bdf8; margin-bottom: 15px; font-size: 18px; }
+        .progress-bar { width: 100%; height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; margin: 15px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #f97316, #fb923c); border-radius: 6px; transition: width 0.5s ease; }
+        .porcentaje { font-size: 20px; font-weight: 700; color: #f97316; margin-bottom: 10px; }
+
+        .month-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .month-card { background: #111827; padding: 20px; border-radius: 20px; text-align: center; border-left: 4px solid #38bdf8; }
+        .month-card.active { background: linear-gradient(135deg, #1e3a8a, #1d4ed8); border-left-color: #38bdf8; }
+        .month-name { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+        .month-saldo { font-size: 24px; font-weight: 800; }
+
+        .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 30px; }
+        .chart-card { background: #111827; padding: 25px; border-radius: 25px; }
+        .chart-card h3 { margin-bottom: 20px; color: #38bdf8; }
+
+        .table-box { background: #111827; padding: 25px; border-radius: 25px; overflow: auto; }
+        .table-box h3 { margin-bottom: 20px; color: #38bdf8; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1e293b; color: #38bdf8; font-weight: 600; }
+        th, td { padding: 14px; text-align: left; }
+        tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
+        tr:hover { background: rgba(255,255,255,0.05); }
+
+        @media(max-width: 1200px) { .detalle-box, .month-cards { grid-template-columns: 1fr 1fr; } }
+        @media(max-width: 1000px) { 
+            .sidebar { display: none; } 
+            .main { margin-left: 0; } 
+            .credit-box, .detalle-box, .month-cards { grid-template-columns: 1fr; } 
+            .charts { grid-template-columns: 1fr; } 
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="logo">Finanzas<br>Pro</div>
+        <div class="menu">
+            <button class="active"><i class="fas fa-house"></i> Dashboard</button>
+            <button><i class="fas fa-wallet"></i> Finanzas</button>
+            <button><i class="fas fa-credit-card"></i> Tarjetas</button>
+            <button><i class="fas fa-piggy-bank"></i> Ahorros</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="topbar">
+            <div>
+                <h1>Dashboard Financiero</h1>
+                <p>Control inteligente de ingresos y gastos</p>
+            </div>
+            <div>
+                <select id="monthSelector" class="month-selector">
+                    <option value="todos">📊 Todos los meses</option>
+                </select>
+                <input type="file" id="excelFile" hidden accept=".xlsx,.xls">
+                <button class="btn" onclick="document.getElementById('excelFile').click()">
+                    <i class="fas fa-file-excel"></i> Subir Excel
+                </button>
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card positivo">
+                <p>Ingresos Totales</p>
+                <h2 id="ingresos">S/ 0.00</h2>
+                <small id="periodoInfo">Todos los periodos</small>
+                <i class="fas fa-arrow-trend-up"></i>
+            </div>
+            <div class="card negativo">
+                <p>Gastos Totales</p>
+                <h2 id="gastos">S/ 0.00</h2>
+                <i class="fas fa-arrow-trend-down"></i>
+            </div>
+            <div class="card saldo-positivo" id="cardSaldo">
+                <p>Saldo Disponible</p>
+                <h2 id="saldo">S/ 0.00</h2>
+                <small id="detalleSaldo">Cargando...</small>
+                <i class="fas fa-wallet"></i>
+            </div>
+            <div class="card ahorros">
+                <p>Total Ahorros</p>
+                <h2 id="totalAhorrosCard">S/ 0.00</h2>
+                <small id="ahorrosDetalle">Cat. "ahorro"</small>
+                <i class="fas fa-piggy-bank"></i>
+            </div>
+        </div>
+
+        <!-- 🆕 CARDS DE MESES -->
+        <div class="month-cards" id="monthCards" style="display: none;">
+            <!-- Se generan dinámicamente -->
+        </div>
+
+        <div class="credit-box">
+            <div class="credit">
+                <h2>🏧 Tarjeta CMR <span id="cmrEstado" style="float:right;font-size:12px;"></span></h2>
+                <div class="credit-line"><span>Límite</span><strong>S/ 500.00</strong></div>
+                <div class="credit-line"><span>Compras</span><strong id="cmrCompras">S/ 0.00</strong></div>
+                <div class="credit-line"><span>Pagos</span><strong id="cmrPagos">S/ 0.00</strong></div>
+                <div class="credit-line">
+                    <span>Disponible</span>
+                    <strong id="cmrDisponible" class="disponible-ok">S/ 500.00</strong>
+                </div>
+            </div>
+            <div class="credit">
+                <h2>🇺🇸 Tarjeta AMEX <span id="amexEstado" style="float:right;font-size:12px;"></span></h2>
+                <div class="credit-line"><span>Límite</span><strong>S/ 700.00</strong></div>
+                <div class="credit-line"><span>Compras</span><strong id="amexCompras">S/ 0.00</strong></div>
+                <div class="credit-line"><span>Pagos</span><strong id="amexPagos">S/ 0.00</strong></div>
+                <div class="credit-line">
+                    <span>Disponible</span>
+                    <strong id="amexDisponible" class="disponible-ok">S/ 700.00</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="detalle-box">
+            <div class="detalle-card">
+                <h3>💰 Ahorros</h3>
+                <div style="font-size: 28px; font-weight: 800; color: #8b5cf6;">
+                    S/ <span id="totalAhorrosDetalle">0.00</span>
+                </div>
+                <small>tipo=gasto, cat="ahorro"</small>
+            </div>
+            <div class="detalle-card">
+                <h3>🛡️ Seguro</h3>
+                <div class="porcentaje" id="porcentajeSeguro">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressSeguro"></div>
+                </div>
+                <div style="font-size: 18px;">
+                    S/ <span id="totalSeguro">0</span> / S/ 11,904
+                </div>
+            </div>
+            <div class="detalle-card">
+                <h3>📊 Verificación</h3>
+                <div style="font-size: 16px; line-height: 1.6;">
+                    <div>Ingresos: <strong id="debugIngresos">0</strong></div>
+                    <div>Gastos: <strong id="debugGastos">0</strong></div>
+                    <div><strong>Saldo: <span id="debugSaldo">0</span></strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts">
+            <div class="chart-card">
+                <h3>Gastos por Categoría</h3>
+                <canvas id="miGrafico" width="400" height="250"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Ingresos vs Gastos Mensual</h3>
+                <canvas id="miGrafico2" width="400" height="250"></canvas>
+            </div>
+        </div>
+
+        <div class="table-box">
+            <h3>Movimientos <small id="totalMovimientos">(0 registros)</small></h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Categoría</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla">
+                    <tr><td colspan="4" style="text-align:center; padding:40px; color:#94a3b8;">Sube un archivo Excel</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let pieChart, barChart;
+        let datosMensuales = {};
+        let todosLosDatos = [];
+        const LIMITE_CMR = 500;
+        const LIMITE_AMEX = 700;
+        const META_SEGURO = 11904;
+        let mesSeleccionado = 'todos';
+
+        document.getElementById("excelFile").addEventListener("change", leerExcel);
+        document.getElementById("monthSelector").addEventListener("change", filtrarPorMes);
+
+        function leerExcel(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
+                procesarDatosCompletos(json);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function dinero(valor) {
+            return Number(parseFloat(valor) || 0).toLocaleString('es-PE', { 
+                minimumFractionDigits: 2, 
+                maximumFractionDigits: 2 
+            });
+        }
+
+        function obtenerMesAño(fecha) {
+            if (typeof fecha === "number") {
+                const fechaExcel = XLSX.SSF.parse_date_code(fecha);
+                return `${fechaExcel.y}-${String(fechaExcel.m).padStart(2, '0')}`;
+            }
+            if (fecha && fecha.toString().includes('/')) {
+                const partes = fecha.toString().split('/');
+                if (partes.length >= 3) {
+                    const dia = partes[0];
+                    const mes = partes[1];
+                    const año = partes[2];
+                    return `${año}-${String(mes).padStart(2, '0')}`;
+                }
+            }
+            return 'sin-fecha';
+        }
+
+        function nombreMes(mesAño) {
+            const [año, mes] = mesAño.split('-');
+            const meses = {
+                '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
+                '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
+                '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
+            };
+            return `${meses[mes] || mes} ${año}`;
+        }
+
+        function fechaReal(fecha) {
+            if (typeof fecha === "number") {
+                const fechaExcel = XLSX.SSF.parse_date_code(fecha);
+                return `${fechaExcel.d}/${fechaExcel.m}/${fechaExcel.y}`;
+            }
+            return fecha?.toString() || "";
+        }
+
+        function actualizarTarjetas(cmrCompras, cmrPagos, amexCompras, amexPagos) {
+            const cmrDisponible = Math.max(LIMITE_CMR - cmrCompras + cmrPagos, 0);
+            document.getElementById("cmrCompras").textContent = "S/ " + dinero(cmrCompras);
+            document.getElementById("cmrPagos").textContent = "S/ " + dinero(cmrPagos);
+            document.getElementById("cmrDisponible").textContent = "S/ " + dinero(cmrDisponible);
+            document.getElementById("cmrDisponible").className = cmrDisponible > 0 ? "disponible-ok" : "disponible-0";
+            document.getElementById("cmrEstado").textContent = cmrDisponible > 0 ? "✅ OK" : "⚠️ LÍMITE";
+            
+            const amexDisponible = Math.max(LIMITE_AMEX - amexCompras + amexPagos, 0);
+            document.getElementById("amexCompras").textContent = "S/ " + dinero(amexCompras);
+            document.getElementById("amexPagos").textContent = "S/ " + dinero(amexPagos);
+            document.getElementById("amexDisponible").textContent = "S/ " + dinero(amexDisponible);
+            document.getElementById("amexDisponible").className = amexDisponible > 0 ? "disponible-ok" : "disponible-0";
+            document.getElementById("amexEstado").textContent = amexDisponible > 0 ? "✅ OK" : "⚠️ LÍMITE";
+        }
+
+        function procesarDatosCompletos(datos) {
+            todosLosDatos = datos;
+            datosMensuales = {};
+            
+            // 🔄 Procesar por meses
+            datos.forEach((row, index) => {
+                const columnas = {};
+                Object.keys(row).forEach(col => {
+                    const cleanCol = col.toString().toLowerCase().trim();
+                    columnas[cleanCol] = row[col];
+                });
+
+                const mesAño = obtenerMesAño(columnas["fecha"]);
+                if (!datosMensuales[mesAño]) {
+                    datosMensuales[mesAño] = [];
+                }
+                datosMensuales[mesAño].push(row);
+            });
+
+            // 🆕 Crear selector de meses
+            crearSelectorMeses();
+            mostrarMonthCards();
+            
+            // 📊 Mostrar datos totales por defecto
+            procesarDatosFiltrados('todos');
+        }
+
+        function crearSelectorMeses() {
+            const selector = document.getElementById("monthSelector");
+            selector.innerHTML = '<option value="todos">📊 Todos los meses</option>';
+            
+            Object.keys(datosMensuales).sort().reverse().forEach(mesAño => {
+                if (mesAño !== 'sin-fecha') {
+                    const option = document.createElement('option');
+                    option.value = mesAño;
+                    option.textContent = nombreMes(mesAño);
+                    selector.appendChild(option);
+                }
+            });
+        }
+
+        function mostrarMonthCards() {
+            const container = document.getElementById("monthCards");
+            container.innerHTML = '';
+            
+            Object.keys(datosMensuales).sort().reverse().forEach(mesAño => {
+                if (mesAño !== 'sin-fecha') {
+                    const datosMes = procesarMesIndividual(mesAño);
+                    const saldo = datosMes.ingresos - datosMes.gastos;
+                    const card = document.createElement('div');
+                    card.className = `month-card ${mesAño === mesSeleccionado ? 'active' : ''}`;
+                    card.dataset.mes = mesAño;
+                    card.onclick = () => filtrarPorMes({target: {value: mesAño}});
+                    card.innerHTML = `
+                        <div class="month-name">${nombreMes(mesAño)}</div>
+                        <div class="month-saldo" style="color: ${saldo >= 0 ? '#10b981' : '#ef4444'}">
+                            S/ ${dinero(saldo)}
+                        </div>
+                        <small>${datosMes.registros} mov.</small>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+            container.style.display = Object.keys(datosMensuales).length > 1 ? 'grid' : 'none';
+        }
+
+        function procesarMesIndividual(mesAño) {
+            const datosMes = datosMensuales[mesAño];
+            let ingresos = 0, gastos = 0, registros = 0;
+            
+            datosMes.forEach(row => {
+                const columnas = {};
+                Object.keys(row).forEach(col => {
+                    const cleanCol = col.toString().toLowerCase().trim();
+                    columnas[cleanCol] = row[col];
+                });
+
+                const tipoRaw = (columnas["tipo"] || "").toString().trim().toLowerCase();
+                let montoTexto = (columnas["monto"] || columnas["monto s/"] || columnas["monto s ."] || "0").toString()
+                    .replace(/[^\d.,-]/g, '').replace(',', '.').trim();
+                let monto = parseFloat(montoTexto);
+                
+                if (!isNaN(monto) && monto !== 0) {
+                    registros++;
+                    if (tipoRaw.includes("ingreso") || tipoRaw.includes("entrada") || tipoRaw.includes("sueldo")) {
+                        ingresos += Math.abs(monto);
+                    } else if (tipoRaw.includes("gasto") || tipoRaw.includes("salida")) {
+                        gastos += Math.abs(monto);
+                    }
+                }
+            });
+            
+            return { ingresos, gastos, registros };
+        }
+
+        function filtrarPorMes(e) {
+            mesSeleccionado = e.target.value;
+            document.querySelectorAll('.month-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.mes === mesSeleccionado);
+            });
+            procesarDatosFiltrados(mesSeleccionado);
+        }
+
+        function procesarDatosFiltrados(mesFiltro) {
+            let datosFiltrados = mesFiltro === 'todos' ? todosLosDatos : datosMensuales[mesFiltro] || [];
+            
+            let ingresos = 0, gastos = 0, ahorros = 0, seguro = 0;
+            let categorias = {}, cmrCompras = 0, cmrPagos = 0, amexCompras = 0, amexPagos = 0;
+            const tabla = document.getElementById("tabla");
+            tabla.innerHTML = "";
+
+            console.clear();
+            console.log("🔄 PROCESANDO", datosFiltrados.length, "filas", mesFiltro === 'todos' ? "TOTALES" : `MES ${nombreMes(mesFiltro)}`);
+
+            datosFiltrados.forEach((row, index) => {
+                const columnas = {};
+                Object.keys(row).forEach(col => {
+                    const cleanCol = col.toString().toLowerCase().trim();
+                    columnas[cleanCol] = row[col];
+                });
+
+                const tipoRaw = (columnas["tipo"] || "").toString().trim();
+                const categoriaRaw = (columnas["categoría"] || columnas["categoria"] || "").toString().trim();
+                const tarjetaRaw = (columnas["tarjeta"] || columnas["tarjeta (solo si aplica)"] || "").toString().trim();
+                const metodoPagoRaw = (columnas["método de pago"] || columnas["metodo de pago"] || "").toString().trim();
+                
+                const tipo = tipoRaw.toLowerCase();
+                const categoria = categoriaRaw.toLowerCase();
+                const tarjeta = tarjetaRaw.toLowerCase();
+                const metodoPago = metodoPagoRaw.toLowerCase();
+                const fecha = columnas["fecha"] || "";
+
+                let montoTexto = (columnas["monto"] || columnas["monto s/"] || columnas["monto s ."] || "0").toString()
+                    .replace(/[^\d.,-]/g, '').replace(',', '.').trim();
+                let monto = parseFloat(montoTexto);
+                if (isNaN(monto) || monto === 0) return;
+
+                if (tipo.includes("ingreso") || tipo.includes("entrada") || tipo.includes("sueldo")) {
+                    ingresos += Math.abs(monto);
+                } else if (tipo.includes("gasto") || tipo.includes("salida")) {
+                    gastos += Math.abs(monto);
+                    
+                    if (categoria.includes("ahorro")) ahorros += Math.abs(monto);
+                    if (categoria.includes("seguro")) seguro += Math.abs(monto);
+                    
+                    if (!categoria.includes("ahorro") && !categoria.includes("seguro")) {
+                        categorias[categoria] = (categorias[categoria] || 0) + Math.abs(monto);
+                    }
+                }
+
+                // TARJETAS (igual que antes)
+                if (tipo.includes("gasto")) {
+                    if (metodoPago.includes("tarjeta") && (
+                        tarjeta.includes("cmr") || tarjeta.includes("visa") || categoria.includes("cmr")
+                    )) {
+                        cmrCompras += Math.abs(monto);
+                    }
+                    if (categoria.includes("pago") && (
+                        categoria.includes("cmr") || categoria.includes("visa")
+                    )) {
+                        cmrPagos += Math.abs(monto);
+                    }
+                    if (metodoPago.includes("tarjeta") && (
+                        tarjeta.includes("amex") || tarjeta.includes("american")
+                    )) {
+                        amexCompras += Math.abs(monto);
+                    }
+                    if (categoria.includes("pago") && (
+                        categoria.includes("amex") || categoria.includes("american")
+                    )) {
+                        amexPagos += Math.abs(monto);
+                    }
+                }
+
+                tabla.innerHTML += `
+                    <tr>
+                        <td>${fechaReal(fecha)}</td>
+                        <td style="color: ${tipo.includes('ingreso') ? '#22c55e' : '#ef4444'}">
+                            ${tipo.includes('ingreso') ? '➕ Ingreso' : '➖ Gasto'}
+                        </td>
+                        <td>${categoria.substring(0,20)}${categoria.length>20?'...':''}</td>
+                        <td style="font-weight: 700; color: ${tipo.includes('ingreso') ? '#22c55e' : '#ef4444'}">
+                            S/ ${dinero(monto)}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            const saldo = parseFloat((ingresos - gastos).toFixed(2));
+            
+            // ACTUALIZAR DASHBOARD
+            document.getElementById("ingresos").textContent = "S/ " + dinero(ingresos);
+            document.getElementById("gastos").textContent = "S/ " + dinero(gastos);
+            document.getElementById("saldo").textContent = "S/ " + dinero(saldo);
+            document.getElementById("totalAhorrosCard").textContent = "S/ " + dinero(ahorros);
+            document.getElementById("periodoInfo").textContent = mesFiltro === 'todos' ? 'Todos los periodos' : nombreMes(mesFiltro);
+            
+            document.getElementById("totalAhorrosDetalle").textContent = dinero(ahorros);
+            document.getElementById("totalSeguro").textContent = dinero(seguro);
+            document.getElementById("debugIngresos").textContent = dinero(ingresos);
+            document.getElementById("debugGastos").textContent = dinero(gastos);
+            document.getElementById("debugSaldo").textContent = dinero(saldo);
+            
+            document.getElementById("detalleSaldo").innerHTML = 
+                saldo >= 0 ? `✅ <strong>+${dinero(saldo)}</strong> disponible` : `❌ <strong>${dinero(saldo)}</strong> adeudo`;
+            
+            document.getElementById("totalMovimientos").textContent = `(${datosFiltrados.length} registros ${mesFiltro === 'todos' ? 'totales' : 'del mes'})`;
+
+            actualizarTarjetas(cmrCompras, cmrPagos, amexCompras, amexPagos);
+
+            const porcSeguro = Math.min((seguro / META_SEGURO) * 100, 100);
+            document.getElementById("porcentajeSeguro").textContent = porcSeguro.toFixed(1) + '%';
+            document.getElementById("progressSeguro").style.width = porcSeguro + '%';
+
+            crearGraficos(categorias, ingresos, gastos, mesFiltro);
+
+            console.log(`✅ ${mesFiltro === 'todos' ? 'TOTAL' : nombreMes(mesFiltro)} - Saldo: S/ ${dinero(saldo)}`);
+        }
+function crearGraficos(categorias, ingresos, gastos, mesFiltro) {
+    if (pieChart) pieChart.destroy();
+    if (barChart) barChart.destroy();
+
+    // =========================
+    // 🎯 GRÁFICO DONA (FORZADO)
+    // =========================
+    const canvasPie = document.getElementById("miGrafico");
+
+    canvasPie.width = 480;
+    canvasPie.height = 480;
+    canvasPie.style.width = "480px";
+    canvasPie.style.height = "480px";
+
+    const ctxPie = canvasPie.getContext("2d");
+
+    pieChart = new Chart(ctxPie, {
+        type: "doughnut",
+        data: {
+            labels: Object.keys(categorias),
+            datasets: [{
+                data: Object.values(categorias),
+                backgroundColor: [
+                    "#3b82f6", "#22c55e", "#ef4444", "#f59e0b",
+                    "#8b5cf6", "#14b8a6", "#e11d48", "#f97316", "#ec4899"
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            cutout: "65%",
+            plugins: {
+                legend: {
+                    position: "right",
+                    labels: {
+                        font: { size: 13 },
+                        padding: 12,
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+
+    // =========================
+    // 📊 GRÁFICO INGRESOS VS GASTOS (FORZADO)
+    // =========================
+    const canvasBar = document.getElementById("miGrafico2");
+
+    canvasBar.width = 650;
+    canvasBar.height = 320;
+    canvasBar.style.width = "650px";
+    canvasBar.style.height = "320px";
+
+    const ctxBar = canvasBar.getContext("2d");
+
+    barChart = new Chart(ctxBar, {
+        type: "bar",
+        data: {
+            labels: [
+                mesFiltro === "todos" ? "Total General" : nombreMes(mesFiltro)
+            ],
+            datasets: [
+                {
+                    label: "Ingresos",
+                    data: [ingresos],
+                    backgroundColor: "#22c55e",
+                    borderRadius: 10
+                },
+                {
+                    label: "Gastos",
+                    data: [gastos],
+                    backgroundColor: "#ef4444",
+                    borderRadius: 10
+                }
+            ]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            indexAxis: "y",
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { display: false },
+                    ticks: {
+                        callback: v => "S/ " + Number(v).toLocaleString("es-PE")
+                    }
+                },
+                y: {
+                    grid: { display: false }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: "top"
+                }
+            }
+        }
+    });
+}
+    </script>
+</body>
+</html>
